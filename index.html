@@ -3,10 +3,531 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ma page GitHub</title>
+    <title>Formulaire de remboursement - ATFC</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #333;
+            text-align: center;
+            margin: 0 auto 20px;
+        }
+        form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        fieldset {
+            flex: 1 1 calc(50% - 10px);
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .highlighted-section {
+            background-color: #e6f3ff; /* Bleu très clair */
+        }
+        legend {
+            font-weight: bold;
+            color: white;
+            background-color: black;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        .form-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            align-items: flex-end;
+            justify-content: flex-start;
+        }
+        .form-group {
+            flex: 1;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        label.required::after {
+            content: ' ♦';
+            color: red;
+        }
+        label.needed::after {
+            content: ' *';
+            color: black;
+        }
+        input[type="text"], input[type="email"], input[type="number"], input[type="date"], textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        input[readonly] {
+            background-color: #d3d3d3;
+        }
+        .note {
+            color: red;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .note::after {
+            content: '\A* = Pièces justificatives requises';
+            white-space: pre;
+            color: black;
+        }
+        .note::before {
+            content: '♦ = Informations obligatoires\A';
+            white-space: pre;
+            color: black;
+        }
+        .full-width {
+            flex-basis: 100%;
+        }
+        .signature-section {
+            margin-top: 20px;
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
+        }
+        .rate-label {
+            background-color: #e6f3ff;
+            color: black;
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em; /* Taille réduite */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            white-space: nowrap;
+        }
+        .buttons {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+        }
+        .buttons-left {
+            flex: 1;
+            text-align: left;
+        }
+        .buttons-right {
+            flex: 1;
+            text-align: right;
+        }
+        button {
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button.reset {
+            background-color: #f44336;
+        }
+        button.print {
+            background-color: #008CBA;
+        }
+        @media (max-width: 768px) {
+            fieldset {
+                flex: 1 1 100%;
+            }
+            .form-row {
+                flex-direction: column;
+            }
+            .buttons {
+                flex-direction: column;
+            }
+            .buttons-left, .buttons-right {
+                text-align: center;
+                margin-bottom: 10px;
+            }
+            .buttons-right {
+                display: flex;
+                justify-content: space-between;
+            }
+        }
+    </style>
+    <script>
+        function toggleExplication() {
+            var autresDepenses = document.getElementById("autres_depenses").value;
+            var explicationRow = document.getElementById("explication_row");
+            var explicationInput = document.getElementById("explication");
+            if (autresDepenses.trim() !== "") {
+                explicationRow.style.display = "flex";
+                explicationInput.required = true;
+            } else {
+                explicationRow.style.display = "none";
+                explicationInput.required = false;
+            }
+            calculateTotal();
+        }
+        function calculateCarAmount() {
+            var km = document.getElementById("voiture_km").value;
+            var rate = 0.8; // Taux de 0.80$/km
+            document.getElementById("voiture_montant").value = (km * rate).toFixed(2);
+            calculateTotal();
+        }
+        function calculateMealAmount(meal, rate) {
+            var days = document.getElementById(meal + "_jours").value;
+            document.getElementById(meal + "_montant").value = (days * rate).toFixed(2);
+            calculateTotal();
+        }
+        function calculateStayAmount(stay, rate) {
+            var days = document.getElementById(stay + "_jours").value;
+            document.getElementById(stay + "_montant").value = (days * rate).toFixed(2);
+            calculateTotal();
+        }
+        function calculatePrivateAmount() {
+            var days = document.getElementById("prive_nuits").value;
+            var rate = 25; // Taux de 25$/jour
+            document.getElementById("prive_montant").value = (days * rate).toFixed(2);
+            calculateTotal();
+        }
+        function calculateTotal() {
+            var fields = [
+                "avion", "frais_bagages", "train", "voiture_montant", "stationnement", 
+                "taxi", "dejeuner_montant", "diner_montant", "souper_montant", 
+                "commercial_nuits", "prive_montant", "faux_frais_montant", "autres_depenses"
+            ];
+            var total = fields.reduce(function(acc, id) {
+                var val = parseFloat(document.getElementById(id).value) || 0;
+                return acc + val;
+            }, 0);
+            document.getElementById("total_depenses").value = total.toFixed(2);
+        }
+
+        function handleSubmit(event) {
+            event.preventDefault();
+            var totalDepenses = parseFloat(document.getElementById("total_depenses").value);
+            var dateDepart = new Date(document.getElementById("date_depart").value);
+            var dateRetour = new Date(document.getElementById("date_retour").value);
+            var piecesAttachees = document.getElementById("pieces_attachees").files.length;
+
+            if (totalDepenses <= 0) {
+                alert("Le montant total doit être supérieur à 0 pour soumettre le formulaire.");
+                return;
+            }
+            if (dateRetour < dateDepart) {
+                alert("La date de retour doit être postérieure à la date de départ.");
+                return;
+            }
+            if (piecesAttachees === 0) {
+                alert("Veuillez joindre des pièces justificatives.");
+                return;
+            }
+            var confirmed = confirm("Voulez-vous vraiment soumettre ce formulaire ?");
+            if (confirmed) {
+                event.target.submit();
+            }
+        }
+
+        function handlePrint() {
+            window.print();
+        }
+
+        function handleReset() {
+            var form = document.querySelector("form");
+            form.reset();
+            // Manually reset all calculated fields
+            var calculatedFields = ["voiture_montant", "dejeuner_montant", "diner_montant", "souper_montant", "prive_montant", "faux_frais_montant", "total_depenses"];
+            calculatedFields.forEach(function(fieldId) {
+                document.getElementById(fieldId).value = "";
+            });
+        }
+    </script>
 </head>
 <body>
-    <h1>Bienvenue sur ma page GitHub!</h1>
-    <p>C'est ma première page hébergée sur GitHub Pages.</p>
+    <div class="container">
+        <h1>DEMANDE DE REMBOURSEMENT</h1>
+        <h2>ASSOCIATION DES THÉÂTRES FRANCOPHONES DU CANADA (ATFC)</h2>
+        <p style="text-align: center;">B-335 rue Cumberland, Ottawa ON K1N 7J3<br>Tél: (613) 562-2233</p>
+        
+        <div class="note">ATTENTION : Toute demande doit être soumise dans un délai de 30 jours.</div>
+        
+        <form onsubmit="handleSubmit(event)">
+            <fieldset class="full-width highlighted-section">
+                <legend>Votre identité</legend>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="prenom" class="required">Prénom:</label>
+                        <input type="text" id="prenom" name="prenom" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="nom" class="required">Nom:</label>
+                        <input type="text" id="nom" name="nom" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="adresse" class="required">Adresse:</label>
+                        <input type="text" id="adresse" name="adresse" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="ville" class="required">Ville:</label>
+                        <input type="text" id="ville" name="ville" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="province" class="required">Province:</label>
+                        <input type="text" id="province" name="province" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="code_postal" class="required">Code postal:</label>
+                        <input type="text" id="code_postal" name="code_postal" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="courriel" class="required">Courriel:</label>
+                        <input type="email" id="courriel" name="courriel" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="telephone" class="required">Téléphone:</label>
+                        <input type="text" id="telephone" name="telephone" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="organisme" class="required">Organisme:</label>
+                        <input type="text" id="organisme" name="organisme" required>
+                    </div>
+                </div>
+            </fieldset>
+            
+            <fieldset class="full-width highlighted-section">
+                <legend>Votre mission</legend>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="lieu_reunion" class="required">Lieu de la réunion:</label>
+                        <input type="text" id="lieu_reunion" name="lieu_reunion" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="raison" class="required">Raison:</label>
+                        <input type="text" id="raison" name="raison" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="date_depart" class="required">Date départ (jj/mm/aa):</label>
+                        <input type="date" id="date_depart" name="date_depart" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="date_retour" class="required">Date retour (jj/mm/aa):</label>
+                        <input type="date" id="date_retour" name="date_retour" required>
+                    </div>
+                </div>
+            </fieldset>
+            
+            <fieldset class="highlighted-section">
+                <legend>Vos dépenses de transport</legend>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="avion" class="needed">Avion ($) - Billet payé par vous-même, avec approbation préalable de l'ATFC :</label>
+                        <input type="number" id="avion" name="avion" step="0.01" placeholder="0.00" onchange="calculateTotal()">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="frais_bagages" class="needed">Frais de bagages ($):</label>
+                        <input type="number" id="frais_bagages" name="frais_bagages" step="0.01" placeholder="0.00" onchange="calculateTotal()">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="train" class="needed">Train ($):</label>
+                        <input type="number" id="train" name="train" step="0.01" placeholder="0.00" onchange="calculateTotal()">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="voiture_km">Voiture (KM):</label>
+                        <input type="number" id="voiture_km" name="voiture_km" step="0.01" onchange="calculateCarAmount()" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label for="taux_km" class="rate-label">(0.80$/km)</label>
+                    </div>
+                    <div class="form-group">
+                        <label for="voiture_montant">Montant KM ($):</label>
+                        <input type="text" id="voiture_montant" name="voiture_montant" readonly placeholder="0.00">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="stationnement" class="needed">Stationnement ($):</label>
+                        <input type="number" id="stationnement" name="stationnement" step="0.01" placeholder="0.00" onchange="calculateTotal()">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="taxi" class="needed">Taxi, métro, autobus ($):</label>
+                        <input type="number" id="taxi" name="taxi" step="0.01" placeholder="0.00" onchange="calculateTotal()">
+                    </div>
+                </div>
+            </fieldset>
+            
+            <fieldset class="highlighted-section">
+                <legend>Vos dépenses de repas</legend>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="dejeuner_jours">Déjeuner (jours):</label>
+                        <input type="number" id="dejeuner_jours" name="dejeuner_jours" min="0" step="1" onchange="calculateMealAmount('dejeuner', 15)">
+                    </div>
+                    <div class="form-group">
+                        <label for="dejeuner_taux" class="rate-label">(15$/jour)</label>
+                    </div>
+                    <div class="form-group">
+                        <label for="dejeuner_montant">Montant Déjeuner ($):</label>
+                        <input type="text" id="dejeuner_montant" name="dejeuner_montant" readonly placeholder="0.00">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="diner_jours">Dîner (jours):</label>
+                        <input type="number" id="diner_jours" name="diner_jours" min="0" step="1" onchange="calculateMealAmount('diner', 25)">
+                    </div>
+                    <div class="form-group">
+                        <label for="diner_taux" class="rate-label">(25$/jour)</label>
+                    </div>
+                    <div class="form-group">
+                        <label for="diner_montant">Montant Dîner ($):</label>
+                        <input type="text" id="diner_montant" name="diner_montant" readonly placeholder="0.00">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="souper_jours">Souper (jours):</label>
+                        <input type="number" id="souper_jours" name="souper_jours" min="0" step="1" onchange="calculateMealAmount('souper', 35)">
+                    </div>
+                    <div class="form-group">
+                        <label for="souper_taux" class="rate-label">(35$/jour)</label>
+                    </div>
+                    <div class="form-group">
+                        <label for="souper_montant">Montant Souper ($):</label>
+                        <input type="text" id="souper_montant" name="souper_montant" readonly placeholder="0.00">
+                    </div>
+                </div>
+            </fieldset>
+            
+            <fieldset class="highlighted-section">
+                <legend>Vos dépenses d'hébergement</legend>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="commercial_nuits" class="needed">Commercial (avec approbation préalable de l'ATFC):</label>
+                        <input type="number" id="commercial_nuits" name="commercial_nuits" step="0.01" placeholder="0.00" onchange="calculateTotal()">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="prive_nuits">Privé (jours):</label>
+                        <input type="number" id="prive_nuits" name="prive_nuits" min="0" step="1" onchange="calculatePrivateAmount()">
+                    </div>
+                    <div class="form-group">
+                        <label for="prive_taux" class="rate-label">(25$/jour)</label>
+                    </div>
+                    <div class="form-group">
+                        <label for="prive_montant">Montant Privé ($):</label>
+                        <input type="text" id="prive_montant" name="prive_montant" readonly placeholder="0.00">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="faux_frais_jours">Faux-frais (nuitées):</label>
+                        <input type="number" id="faux_frais_jours" name="faux_frais_jours" min="0" step="1" onchange="calculateStayAmount('faux_frais', 5)">
+                    </div>
+                    <div class="form-group">
+                        <label for="faux_frais_taux" class="rate-label">(5$/nuitée)</label>
+                    </div>
+                    <div class="form-group">
+                        <label for="faux_frais_montant">Montant Faux-frais ($):</label>
+                        <input type="text" id="faux_frais_montant" name="faux_frais_montant" readonly placeholder="0.00">
+                    </div>
+                </div>
+            </fieldset>
+            
+            <fieldset class="highlighted-section">
+                <legend>Vos autres dépenses</legend>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="autres_depenses" class="needed">Autres dépenses ($):</label>
+                        <input type="number" id="autres_depenses" name="autres_depenses" step="0.01" placeholder="0.00" onchange="toggleExplication()">
+                    </div>
+                </div>
+                <div class="form-row" id="explication_row" style="display: none;">
+                    <div class="form-group">
+                        <label for="explication">Explications:</label>
+                        <textarea id="explication" name="explication" rows="3" required></textarea>
+                    </div>
+                </div>
+            </fieldset>
+            
+            <fieldset class="full-width highlighted-section">
+                <legend>Total des dépenses</legend>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="total_depenses">Montant total ($):</label>
+                        <input type="number" id="total_depenses" name="total_depenses" step="0.01" readonly>
+                    </div>
+                </div>
+            </fieldset>
+            
+            <fieldset class="full-width signature-section highlighted-section">
+                <legend>Déclaration</legend>
+                <p class="required">Je certifie que les dépenses mentionnées ci-dessus ont été encourues dans le cadre de mes responsabilités à l'ATFC.</p>
+                <p class="required">Veuillez svp émettre le chèque à l'ordre de:</p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <input type="text" id="ordre_cheque" name="ordre_cheque" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="sign_checkbox" class="required">En cliquant sur la case à cocher, je signe ce formulaire</label>
+                        <input type="checkbox" id="sign_checkbox" name="sign_checkbox" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="signature_date" class="required">Date de signature:</label>
+                        <input type="date" id="signature_date" name="signature_date" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="pieces_attachees" class="required">Pièces justificatives:</label>
+                        <input type="file" id="pieces_attachees" name="pieces_attachees" multiple required>
+                    </div>
+                </div>
+            </fieldset>
+            
+            <div class="buttons">
+                <div class="buttons-left">
+                    <button type="button" class="print" onclick="handlePrint()">Imprimer</button>
+                </div>
+                <div class="buttons-right">
+                    <button type="reset" class="reset" onclick="handleReset()">Initialiser</button>
+                    <button type="submit">Soumettre</button>
+                </div>
+            </div>
+        </form>
+    </div>
 </body>
 </html>
+
